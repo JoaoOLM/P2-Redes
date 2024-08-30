@@ -107,7 +107,22 @@ class Conexao:
         # TODO: implemente aqui o envio de dados.
         # Chame self.servidor.rede.enviar(segmento, dest_addr) para enviar o segmento
         # que você construir para a camada de rede.
-        pass
+        dst_addr, dst_port, src_addr, src_port = self.id_conexao
+        vezes_maior = int(len(dados) / MSS)
+        counter = 0
+        if len(dados) > MSS:
+            while counter < vezes_maior:
+                pos_inicial = counter * MSS
+                pos_final = (counter + 1) * MSS
+                dados_quebrados = dados[pos_inicial:pos_final]
+                segmento = fix_checksum(make_header(src_port, dst_port, self.seq_no, self.ack_no, 0 | FLAGS_ACK) + dados_quebrados, src_addr, dst_addr)
+                self.servidor.rede.enviar(segmento, dst_addr)
+                self.seq_no += len(dados_quebrados)
+                counter += 1
+        else:
+            segmento = fix_checksum(make_header(src_port, dst_port, self.seq_no, self.ack_no, 0 | FLAGS_ACK) + dados, src_addr, dst_addr)
+            self.servidor.rede.enviar(segmento, dst_addr)
+            self.seq_no += len(dados)
 
     def fechar(self):
         """
