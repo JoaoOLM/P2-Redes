@@ -38,10 +38,11 @@ class Servidor:
             conexao = self.conexoes[id_conexao] = Conexao(self, id_conexao)
 
             # Responder ao SYN com SYN+ACK para aceitar a conexão
-            initial_seq_no = random.randint(0, 0xffff)  # Número de sequência inicial aleatório
-            syn_ack_segment = make_header(self.porta, src_port, initial_seq_no, seq_no + 1, FLAGS_SYN | FLAGS_ACK)
-            syn_ack_segment = fix_checksum(syn_ack_segment, dst_addr, src_addr)  # Corrigir checksum
-            self.rede.enviar(syn_ack_segment, src_addr)
+            conexao.seq_no = random.randint(0, 0xffff)
+            conexao.ack_no = seq_no + 1
+            syn_ack_segment = make_header(dst_port, src_port, conexao.seq_no, conexao.ack_no, FLAGS_SYN | FLAGS_ACK)
+            self.rede.enviar(fix_checksum(syn_ack_segment, dst_addr, src_addr), src_addr)
+            conexao.seq_no += 1
 
             # TODO: você precisa fazer o handshake aceitando a conexão. Escolha se você acha melhor
             # fazer aqui mesmo ou dentro da classe Conexao.
@@ -71,7 +72,24 @@ class Conexao:
         # TODO: trate aqui o recebimento de segmentos provenientes da camada de rede.
         # Chame self.callback(self, dados) para passar dados para a camada de aplicação após
         # garantir que eles não sejam duplicados e que tenham sido recebidos em ordem.
-        print('recebido payload: %r' % payload)
+        dst_addr, dst_port, src_addr, src_port = self.id_conexao
+
+        if (flags & FLAGS_FIN) == FLAGS_FIN:
+            payload = b''
+            self.callback(self, payload)
+            self.ack_no += 1
+            sndpkt = fix_checksum(make_header(src_port, dst_port, self.seq_no, self.ack_no, FLAGS_ACK), src_addr, dst_addr)
+            self.servidor.rede.enviar(sndpkt, dst_addr)
+        elif len(payload) <= 0:
+            return
+        else:
+            if self.ack_no != seq_no:
+                return 
+            self.callback(self, payload)
+            self.ack_no += len(payload)
+            sndpkt = fix_checksum(make_header(src_port, dst_port, self.seq_no, self.ack_no, FLAGS_ACK), src_addr, dst_addr)
+            self.servidor.rede.enviar(sndpkt, dst_addr)
+            print('recebido payload: %r' % payload)
 
     # Os métodos abaixo fazem parte da API
 
