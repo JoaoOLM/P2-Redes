@@ -129,4 +129,8 @@ class Conexao:
         Usado pela camada de aplicação para fechar a conexão
         """
         # TODO: implemente aqui o fechamento de conexão
-        pass
+        dst_addr, dst_port, src_addr, src_port = self.id_conexao
+        segmento = make_header(src_port, dst_port, self.seq_no, self.ack_no, FLAGS_FIN)
+        segmento_correto = fix_checksum(segmento, src_addr, dst_addr)
+        self.servidor.rede.enviar(segmento_correto, dst_addr)
+        self.ack_no += 1
