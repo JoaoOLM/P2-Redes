@@ -1,5 +1,6 @@
 import asyncio
-from tcputils import *
+from grader.tcputils import *
+import random
 
 # Initial commit
 class Servidor:
@@ -35,6 +36,13 @@ class Servidor:
             # A flag SYN estar setada significa que é um cliente tentando estabelecer uma conexão nova
             # TODO: talvez você precise passar mais coisas para o construtor de conexão
             conexao = self.conexoes[id_conexao] = Conexao(self, id_conexao)
+
+            # Responder ao SYN com SYN+ACK para aceitar a conexão
+            initial_seq_no = random.randint(0, 0xffff)  # Número de sequência inicial aleatório
+            syn_ack_segment = make_header(self.porta, src_port, initial_seq_no, seq_no + 1, FLAGS_SYN | FLAGS_ACK)
+            syn_ack_segment = fix_checksum(syn_ack_segment, dst_addr, src_addr)  # Corrigir checksum
+            self.rede.enviar(syn_ack_segment, src_addr)
+
             # TODO: você precisa fazer o handshake aceitando a conexão. Escolha se você acha melhor
             # fazer aqui mesmo ou dentro da classe Conexao.
             if self.callback:
